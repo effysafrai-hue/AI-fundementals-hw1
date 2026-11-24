@@ -1,0 +1,46 @@
+"""Local tests only. NOT submitted, never imported by ex1.py."""
+import ex1
+
+
+def test_step1():
+    # Swing cost: 3 tiles, height 1 -> 4, expect 3 + 3 = 6.
+    g = {
+        "map": [['P', 'P', 'P', 'P', 'D']],
+        "heights": [[1, 0, 0, 4, 0]],
+        "spiderman": {"starting_location": (0, 0), "starting_web_fluid": 9, "max_web_fluid": 9,
+                      "swing_range": 3, "villain_damage": 5},
+        "villains": {"V": [(0, 1), (0, 2), (0, 3)]},     # path A,B,C
+        "web_caches": [{"location": [0, 2], "refill_amount": 4, "cooldown": 2}],
+    }
+    p = ex1.SpiderManProblem(g)
+    print("initial:", p.initial)
+    print("swings from (0,0):", p.swings[0])
+    cost_to_3 = [cost for dst, cost, a in p.swings[0] if dst == 3]
+    assert cost_to_3 == [6], cost_to_3
+
+    # Villain A,B,C -> A B C B A B over t = 0..5  (cells 1,2,3,2,1,2)
+    print("P =", p.P, " dmg per phase:", p.dmg)
+    seq = [list(p.dmg[t % p.P].keys())[0] for t in range(6)]
+    assert seq == [1, 2, 3, 2, 1, 2], seq
+    assert p.P == 4
+
+    # Walls stop the scan; LCM of periods 4 and 6 is 12.
+    g2 = {
+        "map": [['P', 'I', 'P'], ['P', 'P', 'P'], ['P', 'P', 'D']],
+        "heights": [[0] * 3] * 3,
+        "spiderman": {"starting_location": (0, 0), "starting_web_fluid": 9, "max_web_fluid": 9,
+                      "swing_range": 2, "villain_damage": 1},
+        "villains": {"a": [(1, 0), (1, 1), (1, 2)],          # period 4
+                     "b": [(2, 0), (2, 1), (2, 2), (1, 2)]},  # period 6
+        "web_caches": [],
+    }
+    p2 = ex1.SpiderManProblem(g2)
+    dsts = sorted(d for d, _, _ in p2.swings[0])
+    assert dsts == [3, 6], dsts          # right is blocked by I at (0,1)
+    assert p2.P == 12, p2.P
+    assert p2.cache_at == {} and p2.initial[3] == ()
+    print("step 1: all checks passed")
+
+
+if __name__ == "__main__":
+    test_step1()
