@@ -109,6 +109,7 @@ within 60 s. A finite state space with duplicate detection guarantees terminatio
 | D3 | Position | Single int `r * W + c` | Faster to hash than a tuple. Convert at input and output only. |
 | D4 | "Finished" | Special `pos = -1` | One int, no extra state component. |
 | D5 | Order of heuristics | Build a correct baseline first (h trivial, then swing-graph BFS), advanced heuristics only afterwards | Gives a ground truth to compare against. |
+| D6 | A* tie-break among equal f | Larger g first: heap entry `(f, -g, counter, node)` | Reaches a goal faster inside the last f-layer; never changes optimality. Can be upgraded to `(-g, -fluid)` later if measured to help. |
 
 **Important correction on D2:** P must be the **LCM** of all villain periods, NOT the longest period.
 The longest period is only correct if every other period divides it. Example: periods 4 and 6 with modulus 6 would

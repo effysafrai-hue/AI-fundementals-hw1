@@ -2,6 +2,7 @@ import search
 import random
 import math
 import itertools
+import heapq
 
 
 ids = ["111111111", "111111111"]
@@ -135,8 +136,9 @@ class SpiderManProblem(search.Problem):
         """
         Heuristic function for A* search.
         Estimates the minimum number of turns needed to reach the goal.
+        Step 4 baseline: 0 if finished, else 1 (the finish turn is still needed).
         """
-        raise NotImplementedError
+        return 0 if node.state[0] == -1 else 1
 
 
 def create_spiderman_problem(game):
@@ -144,5 +146,31 @@ def create_spiderman_problem(game):
 
 
 def astar_search(problem, heuristic):
-    """Return the goal node if found, None otherwise."""
-    raise NotImplementedError
+    """Return the goal node if found, None otherwise.
+    Graph-search A*: goal test on pop, best g per state, stale entries skipped.
+    Heap entry: (f, -g, counter, node)  -> ties on f go to the larger g (D6)."""
+    root = search.Node(problem.initial)
+    h0 = heuristic(root)
+    if h0 == math.inf:
+        return None
+    counter = itertools.count()
+    heap = [(h0, 0, next(counter), root)]
+    best_g = {root.state: 0}
+    while heap:
+        _, neg_g, _, node = heapq.heappop(heap)
+        g = -neg_g
+        state = node.state
+        if g > best_g[state]:
+            continue                      # stale: a better path to this state was found
+        if problem.goal_test(state):
+            return node                   # goal test on POP -> optimal
+        g2 = g + 1
+        for action, s2 in problem._successors(state):
+            if g2 < best_g.get(s2, math.inf):
+                best_g[s2] = g2
+                child = search.Node(s2, node, action, g2)
+                h2 = heuristic(child)
+                if h2 == math.inf:
+                    continue              # (for later heuristics) provably no plan from s2
+                heapq.heappush(heap, (g2 + h2, -g2, next(counter), child))
+    return None
