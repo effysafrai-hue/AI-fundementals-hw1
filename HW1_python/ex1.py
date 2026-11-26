@@ -83,17 +83,53 @@ class SpiderManProblem(search.Problem):
                  tuple(0 for _ in self.cd_len))
         search.Problem.__init__(self, start)
 
+    FINISHED = (-1, 0, 0, ())
+
+    def _successors(self, state):
+        """The ONLY place where the game rules live.
+        Returns a list of (action, next_state) for all legal actions."""
+        pos, fluid, phase, cds = state
+        if pos == -1:                      # finished: check BEFORE any table lookup
+            return []
+        if pos == self.goal_cell:          # on D the only useful action is finish
+            return [(("finish",), self.FINISHED)]
+
+        nphase = (phase + 1) % self.P      # villains move -> positions at time t+1
+        d = self.dmg[nphase]
+        ncds = tuple(x - 1 if x > 0 else 0 for x in cds)
+        out = []
+
+        for dst, cost, action in self.swings[pos]:
+            nf = fluid - cost - d.get(dst, 0)
+            if nf >= 0:
+                out.append((action, (dst, nf, nphase, ncds)))
+
+        nf = fluid - d.get(pos, 0)
+        if nf >= 0:
+            out.append((("wait",), (pos, nf, nphase, ncds)))
+
+        i = self.cache_at.get(pos)
+        if i is not None and cds[i] == 0:
+            nf = min(self.max_fluid, fluid + self.refill_amt[i]) - d.get(pos, 0)
+            if nf >= 0:
+                rcds = ncds[:i] + (self.cd_len[i],) + ncds[i + 1:]
+                out.append((("refill",), (pos, nf, nphase, rcds)))
+        return out
+
     def actions(self, state):
         """Return the valid actions that can be executed in the given state."""
-        raise NotImplementedError
+        return [a for a, _ in self._successors(state)]
 
     def result(self, state, action):
         """Return the state that results from executing the given action in the given state."""
-        raise NotImplementedError
+        for a, s in self._successors(state):
+            if a == action:
+                return s
+        raise ValueError("illegal action %r in state %r" % (action, state))
 
     def goal_test(self, state):
         """Return True if the state is a goal state."""
-        raise NotImplementedError
+        return state[0] == -1
 
     def h(self, node):
         """
